@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { query } from "@/lib/db"
-import { verifyToken, createAuditLog } from "@/lib/auth"
+import { verifyToken } from "@/lib/auth"
 
-// Get enhanced tasks with subtasks and attachments
+// Get all tasks with enhanced details
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get("auth-token")?.value
@@ -12,156 +12,143 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    const { searchParams } = new URL(request.url)
-    const includeSubtasks = searchParams.get("include_subtasks") === "true"
-    const includeAttachments = searchParams.get("include_attachments") === "true"
-    const category = searchParams.get("category")
+    const url = new URL(request.url)
+    const includeSubtasks = url.searchParams.get("include_subtasks") === "true"
+    const includeAttachments = url.searchParams.get("include_attachments") === "true"
 
-    let queryText = `
+    // Base query for tasks
+    let tasksQuery = `
       SELECT 
         t.*,
         c.name as client_name,
-        ua.name as assigned_by_name,
-        uat.name as assigned_to_name,
-        COUNT(st.id) as subtask_count,
-        COUNT(CASE WHEN st.status = 'Completed' THEN 1 END) as completed_subtasks,
-        COUNT(ta.id) as attachment_count,
-        COALESCE(SUM(ttl.duration_minutes), 0) as total_time_minutes
+        u.name as assigned_to_name,
+        (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as subtask_count,
+        (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND status = 'Completed') as completed_subtasks,
+        (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM tasks t
       LEFT JOIN clients c ON t.client_id = c.id
-      LEFT JOIN users ua ON t.assigned_by = ua.id
-      LEFT JOIN users uat ON t.assigned_to = uat.id
-      LEFT JOIN subtasks st ON t.id = st.task_id
-      LEFT JOIN task_attachments ta ON t.id = ta.task_id
-      LEFT JOIN task_time_logs ttl ON t.id = ttl.task_id
+      LEFT JOIN users u ON t.assigned_to = u.id
     `
-    let params: any[] = []
 
     // Filter based on user role
-    if (decoded.role === "team_member") {
-      queryText += " WHERE t.assigned_to = ?"
-      params = [decoded.id]
-    } else if (decoded.role === "team_leader") {
-      queryText += " WHERE t.assigned_to IN (SELECT id FROM users WHERE team_leader_id = ? OR id = ?)"
-      params = [decoded.id, decoded.id]
+    if (!["admin", "director"].includes(decoded.role)) {
+      tasksQuery += ` WHERE t.assigned_to = ? OR t.assigned_by = ?`
     }
 
-    // Add category filter
-    if (category && ["CASE", "HARIAN"].includes(category)) {
-      if (params.length > 0) {
-        queryText += " AND t.task_category = ?"
-      } else {
-        queryText += " WHERE t.task_category = ?"
-      }
-      params.push(category)
-    }
+    const params = !["admin", "director"].includes(decoded.role) ? [decoded.id, decoded.id] : []
+    const tasksResult = await query(tasksQuery, params)
 
-    queryText += " GROUP BY t.id ORDER BY t.created_at DESC"
+    let tasks = tasksResult.rows
 
-    const result = await query(queryText, params)
-    const tasks = result.rows
-
-    // Get subtasks if requested
+    // Include subtasks if requested
     if (includeSubtasks && tasks.length > 0) {
-      const taskIds = tasks.map((t) => t.id)
-      const subtasksResult = await query(
-        `SELECT st.*, u.name as assigned_to_name 
-         FROM subtasks st 
-         LEFT JOIN users u ON st.assigned_to = u.id 
-         WHERE st.task_id IN (${taskIds.map(() => "?").join(",")})
-         ORDER BY st.created_at ASC`,
-        taskIds,
-      )
+      const taskIds = tasks.map((t: any) => t.id)
+      const subtasksQuery = `
+        SELECT st.*, u.name as assigned_to_name 
+        FROM subtasks st 
+        LEFT JOIN users u ON st.assigned_to = u.id 
+        WHERE st.task_id IN (${taskIds.map(() => "?").join(",")})
+        ORDER BY st.created_at ASC
+      `
+      const subtasksResult = await query(subtasksQuery, taskIds)
 
       // Group subtasks by task_id
-      const subtasksByTask = subtasksResult.rows.reduce((acc, subtask) => {
+      const subtasksByTask = subtasksResult.rows.reduce((acc: any, subtask: any) => {
         if (!acc[subtask.task_id]) acc[subtask.task_id] = []
         acc[subtask.task_id].push(subtask)
         return acc
       }, {})
 
-      tasks.forEach((task) => {
-        task.subtasks = subtasksByTask[task.id] || []
-      })
+      tasks = tasks.map((task: any) => ({
+        ...task,
+        subtasks: subtasksByTask[task.id] || [],
+      }))
     }
 
-    // Get attachments if requested
+    // Include attachments if requested
     if (includeAttachments && tasks.length > 0) {
-      const taskIds = tasks.map((t) => t.id)
-      const attachmentsResult = await query(
-        `SELECT ta.*, u.name as uploaded_by_name 
-         FROM task_attachments ta 
-         LEFT JOIN users u ON ta.uploaded_by = u.id 
-         WHERE ta.task_id IN (${taskIds.map(() => "?").join(",")})
-         ORDER BY ta.uploaded_at DESC`,
-        taskIds,
-      )
+      const taskIds = tasks.map((t: any) => t.id)
+      const attachmentsQuery = `
+        SELECT * FROM task_attachments 
+        WHERE task_id IN (${taskIds.map(() => "?").join(",")})
+      `
+      const attachmentsResult = await query(attachmentsQuery, taskIds)
 
       // Group attachments by task_id
-      const attachmentsByTask = attachmentsResult.rows.reduce((acc, attachment) => {
+      const attachmentsByTask = attachmentsResult.rows.reduce((acc: any, attachment: any) => {
         if (!acc[attachment.task_id]) acc[attachment.task_id] = []
         acc[attachment.task_id].push(attachment)
         return acc
       }, {})
 
-      tasks.forEach((task) => {
-        task.attachments = attachmentsByTask[task.id] || []
-      })
+      tasks = tasks.map((task: any) => ({
+        ...task,
+        attachments: attachmentsByTask[task.id] || [],
+      }))
     }
 
     return NextResponse.json({ success: true, tasks })
   } catch (error) {
-    console.error("Get enhanced tasks error:", error)
+    console.error("Get tasks error:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
 
-// Create new enhanced task
+// Create new task
 export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get("auth-token")?.value
     const decoded = verifyToken(token)
 
-    if (!decoded || !["team_member", "team_leader", "director", "admin"].includes(decoded.role)) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 })
+    if (!decoded) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!["team_member", "team_leader", "admin", "director"].includes(decoded.role)) {
+      return NextResponse.json({ success: false, error: "Insufficient permissions" }, { status: 403 })
     }
 
     const {
       title,
       description,
-      client_id,
-      assigned_to,
+      task_category,
       priority,
-      category,
+      client_id,
       due_date,
       user_deadline,
       estimated_hours,
-      task_category,
       is_personal,
-      subtasks,
+      subtasks = [],
     } = await request.json()
 
-    if (!title || !priority || !task_category) {
+    if (!title || !task_category) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
-    // Create main task
+    // Validate task_category
+    if (!["CASE", "HARIAN"].includes(task_category)) {
+      return NextResponse.json({ success: false, error: "Invalid task category" }, { status: 400 })
+    }
+
+    // Insert main task
     const taskResult = await query(
-      `INSERT INTO tasks (title, description, client_id, assigned_to, assigned_by, priority, category, due_date, user_deadline, estimated_hours, task_category, is_personal)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (
+        title, description, task_category, priority, client_id, 
+        due_date, user_deadline, estimated_hours, is_personal, 
+        assigned_to, assigned_by, status, progress_percentage
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 0)`,
       [
         title,
-        description,
-        client_id,
-        assigned_to || decoded.id,
-        decoded.id,
-        priority,
-        category,
-        due_date,
-        user_deadline,
-        estimated_hours || 1,
+        description || null,
         task_category,
+        priority || "Medium",
+        client_id || null,
+        due_date || null,
+        user_deadline || null,
+        estimated_hours || 1,
         is_personal || false,
+        decoded.id,
+        decoded.id,
       ],
     )
 
@@ -170,40 +157,61 @@ export async function POST(request: NextRequest) {
     // Create subtasks if provided
     if (subtasks && subtasks.length > 0) {
       for (const subtask of subtasks) {
-        await query(
-          `INSERT INTO subtasks (task_id, title, description, priority, due_date, estimated_hours, assigned_to, created_by)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            taskId,
-            subtask.title,
-            subtask.description || "",
-            subtask.priority || "Medium",
-            subtask.due_date,
-            subtask.estimated_hours || 1,
-            subtask.assigned_to || assigned_to || decoded.id,
-            decoded.id,
-          ],
-        )
+        if (subtask.title) {
+          await query(
+            `INSERT INTO subtasks (
+              task_id, title, description, priority, due_date, 
+              estimated_hours, assigned_to, created_by, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending')`,
+            [
+              taskId,
+              subtask.title,
+              subtask.description || null,
+              subtask.priority || "Medium",
+              subtask.due_date || null,
+              Number.parseFloat(subtask.estimated_hours) || 1,
+              decoded.id,
+              decoded.id,
+            ],
+          )
+        }
       }
     }
 
-    // Get the created task with details
-    const newTask = await query(
-      `SELECT t.*, c.name as client_name, ua.name as assigned_by_name, uat.name as assigned_to_name
-       FROM tasks t
-       LEFT JOIN clients c ON t.client_id = c.id
-       LEFT JOIN users ua ON t.assigned_by = ua.id
-       LEFT JOIN users uat ON t.assigned_to = uat.id
-       WHERE t.id = ?`,
+    // Fetch the complete task with all details
+    const newTaskResult = await query(
+      `SELECT 
+        t.*,
+        c.name as client_name,
+        u.name as assigned_to_name,
+        (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as subtask_count,
+        (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND status = 'Completed') as completed_subtasks,
+        (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
+      FROM tasks t
+      LEFT JOIN clients c ON t.client_id = c.id
+      LEFT JOIN users u ON t.assigned_to = u.id
+      WHERE t.id = ?`,
       [taskId],
     )
 
-    // Create audit log
-    await createAuditLog(decoded.id, "CREATE", "tasks", taskId, null, newTask.rows[0], request.ip)
+    // Get subtasks for the new task
+    const subtasksResult = await query(
+      `SELECT st.*, u.name as assigned_to_name 
+       FROM subtasks st 
+       LEFT JOIN users u ON st.assigned_to = u.id 
+       WHERE st.task_id = ?
+       ORDER BY st.created_at ASC`,
+      [taskId],
+    )
 
-    return NextResponse.json({ success: true, task: newTask.rows[0] })
+    const taskWithDetails = {
+      ...newTaskResult.rows[0],
+      subtasks: subtasksResult.rows,
+    }
+
+    return NextResponse.json({ success: true, task: taskWithDetails })
   } catch (error) {
-    console.error("Create enhanced task error:", error)
+    console.error("Create task error:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

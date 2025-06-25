@@ -118,6 +118,22 @@ class ApiClient {
     })
   }
 
+
+  // Invoice PDF generation
+  async generateInvoicePDF(invoiceId: string) {
+    const response = await fetch(`/api/invoices/${invoiceId}/pdf`, {
+      method: "GET",
+      credentials: "include",
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to generate PDF")
+    }
+
+    return response.blob()
+  }
+
+
   // Tasks methods
   async getTasks() {
     return this.request("/tasks")

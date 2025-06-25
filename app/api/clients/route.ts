@@ -26,10 +26,10 @@ export async function GET(request: NextRequest) {
 
     // Filter based on user role
     if (decoded.role === "team_member") {
-      queryText += " WHERE c.assigned_to = $1"
+      queryText += " WHERE c.assigned_to = ?"
       params = [decoded.id]
     } else if (decoded.role === "team_leader") {
-      queryText += " WHERE c.assigned_to IN (SELECT id FROM users WHERE team_leader_id = $1 OR id = $1)"
+      queryText += " WHERE c.assigned_to IN (SELECT id FROM users WHERE team_leader_id = ? OR id = ?)"
       params = [decoded.id]
     }
 

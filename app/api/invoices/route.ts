@@ -5,7 +5,7 @@ import { verifyToken, createAuditLog } from "@/lib/auth"
 // Generate next invoice number
 async function generateInvoiceNumber(): Promise<string> {
   const year = new Date().getFullYear()
-  const result = await query("SELECT COUNT(*) as count FROM invoices WHERE invoice_number LIKE $1", [`INV-${year}-%`])
+  const result = await query("SELECT COUNT(*) as count FROM invoices WHERE invoice_number LIKE ?", [`INV-${year}-%`])
   const count = Number.parseInt(result.rows[0].count) + 1
   return `INV-${year}-${String(count).padStart(3, "0")}`
 }
@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
 
     // Filter based on user role
     if (decoded.role === "team_member") {
-      queryText += " WHERE c.assigned_to = $1"
+      queryText += " WHERE c.assigned_to = ?"
       params = [decoded.id]
     } else if (decoded.role === "team_leader") {
-      queryText += " WHERE c.assigned_to IN (SELECT id FROM users WHERE team_leader_id = $1 OR id = $1)"
+      queryText += " WHERE c.assigned_to IN (SELECT id FROM users WHERE team_leader_id = ? OR id = ?)"
       params = [decoded.id]
     }
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           invoice_number, client_id, period, amount, due_date, 
           bank_account_id, notes, created_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING *
       `,
         [invoiceNumber, client_id, period, amount, due_date, bank_account_id, notes, decoded.id],

@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     // Get current invoice
-    const currentResult = await query("SELECT * FROM invoices WHERE id = $1", [params.id])
+    const currentResult = await query("SELECT * FROM invoices WHERE id = ?", [params.id])
     if (currentResult.rows.length === 0) {
       return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 })
     }
@@ -26,7 +26,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const currentInvoice = currentResult.rows[0]
 
     // Update invoice status
-    let updateQuery = "UPDATE invoices SET status = $1, updated_at = CURRENT_TIMESTAMP"
+    let updateQuery = "UPDATE invoices SET status = ?, updated_at = CURRENT_TIMESTAMP"
     const updateParams = [status, params.id]
 
     // Set additional timestamps based on status
