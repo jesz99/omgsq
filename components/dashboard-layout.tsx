@@ -103,11 +103,10 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
       case "finance":
         return [
           ...baseItems,
-          { name: "Clients", href: "/clients", icon: UserCheck },
-          { name: "Invoices", href: "/invoices", icon: FileText },
-          { name: "All Invoices", href: "/all-invoices", icon: FileText },
-          { name: "Payments", href: "/payments", icon: CreditCard },
-          { name: "Reports", href: "/reports", icon: BarChart3 },
+          { name: "Klien", href: "/clients", icon: UserCheck },
+          { name: "Semua Tagihan", href: "/all-invoices", icon: FileText },
+          { name: "Buat Tagihan", href: "/invoices", icon: FileText },
+          { name: "Buat Pembayaran", href: "/payments", icon: CreditCard }
         ]
 
       case "team_leader":

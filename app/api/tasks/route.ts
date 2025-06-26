@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     const result = await query(
       `
       INSERT INTO tasks (title, description, client_id, assigned_to, assigned_by, priority, category, due_date, estimated_hours)
-      VALUES (?, ?, ?, ?, ?, ?, null, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       [title, description, client_id, assigned_to, decoded.id, priority, category, due_date, estimated_hours || 1],
     )

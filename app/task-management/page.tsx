@@ -20,7 +20,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/hooks/use-toast"
 import {
   Plus,
   Search,
@@ -56,23 +55,15 @@ interface Task {
   subtask_count: number
   completed_subtasks: number
   attachment_count: number
+  total_time_minutes: number
   subtasks?: any[]
   attachments?: any[]
   comments?: any[]
 }
 
-interface NewSubtask {
-  title: string
-  description: string
-  priority: string
-  due_date: string
-  estimated_hours: string
-}
-
 export default function TaskManagementPage() {
   const { user, loading: authLoading } = useAuth()
   const { masterData, loading: masterDataLoading } = useMasterData()
-  const { toast } = useToast()
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -81,7 +72,6 @@ export default function TaskManagementPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [isCreating, setIsCreating] = useState(false)
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -93,10 +83,10 @@ export default function TaskManagementPage() {
     user_deadline: "",
     estimated_hours: "1",
     is_personal: false,
-    subtasks: [] as NewSubtask[],
+    subtasks: [] as any[],
   })
 
-  const [newSubtask, setNewSubtask] = useState<NewSubtask>({
+  const [newSubtask, setNewSubtask] = useState({
     title: "",
     description: "",
     priority: "Medium",
@@ -119,36 +109,16 @@ export default function TaskManagementPage() {
 
       if (result.success) {
         setTasks(result.tasks)
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to load tasks",
-          variant: "destructive",
-        })
       }
     } catch (error) {
       console.error("Failed to load tasks:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load tasks",
-        variant: "destructive",
-      })
     } finally {
       setLoading(false)
     }
   }
 
   const handleCreateTask = async () => {
-    if (!newTask.title || !newTask.task_category) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsCreating(true)
+    if (!newTask.title || !newTask.task_category) return
 
     try {
       const response = await fetch("/api/tasks-enhanced", {
@@ -178,26 +148,9 @@ export default function TaskManagementPage() {
           subtasks: [],
         })
         setIsCreateTaskOpen(false)
-        toast({
-          title: "Success",
-          description: "Task created successfully",
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: result.error || "Failed to create task",
-          variant: "destructive",
-        })
       }
     } catch (error) {
       console.error("Failed to create task:", error)
-      toast({
-        title: "Error",
-        description: "Failed to create task",
-        variant: "destructive",
-      })
-    } finally {
-      setIsCreating(false)
     }
   }
 
@@ -211,24 +164,9 @@ export default function TaskManagementPage() {
 
       if (response.ok) {
         await loadTasks()
-        toast({
-          title: "Success",
-          description: `Task status updated to ${status}`,
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update task status",
-          variant: "destructive",
-        })
       }
     } catch (error) {
       console.error("Failed to update task status:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update task status",
-        variant: "destructive",
-      })
     }
   }
 
@@ -242,40 +180,18 @@ export default function TaskManagementPage() {
 
       if (response.ok) {
         await loadTasks()
-        toast({
-          title: "Success",
-          description: "Progress updated successfully",
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to update progress",
-          variant: "destructive",
-        })
       }
     } catch (error) {
       console.error("Failed to update progress:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update progress",
-        variant: "destructive",
-      })
     }
   }
 
   const addSubtaskToNewTask = () => {
-    if (!newSubtask.title) {
-      toast({
-        title: "Error",
-        description: "Please enter a subtask title",
-        variant: "destructive",
-      })
-      return
-    }
+    if (!newSubtask.title) return
 
     setNewTask((prev) => ({
       ...prev,
-      subtasks: [...prev.subtasks, { ...newSubtask }],
+      subtasks: [...prev.subtasks, { ...newSubtask, id: Date.now() }],
     }))
 
     setNewSubtask({
@@ -284,11 +200,6 @@ export default function TaskManagementPage() {
       priority: "Medium",
       due_date: "",
       estimated_hours: "1",
-    })
-
-    toast({
-      title: "Success",
-      description: "Subtask added to task",
     })
   }
 
@@ -458,7 +369,7 @@ export default function TaskManagementPage() {
                   </div>
                 </div>
 
-                {/* {newTask.task_category === "CASE" && (
+                {newTask.task_category === "CASE" && (
                   <div className="grid gap-2">
                     <Label htmlFor="client">Client</Label>
                     <Select
@@ -477,26 +388,7 @@ export default function TaskManagementPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                )} */}
-
-                <div className="grid gap-2">
-                  <Label htmlFor="client">Client</Label>
-                  <Select
-                    value={newTask.client_id}
-                    onValueChange={(value) => setNewTask({ ...newTask, client_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select client (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {masterData.clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id.toString()}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                )}
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="grid gap-2">
@@ -595,18 +487,11 @@ export default function TaskManagementPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateTaskOpen(false)} disabled={isCreating}>
+                <Button variant="outline" onClick={() => setIsCreateTaskOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleCreateTask} disabled={!newTask.title || !newTask.task_category || isCreating}>
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Task"
-                  )}
+                <Button onClick={handleCreateTask} disabled={!newTask.title || !newTask.task_category}>
+                  Create Task
                 </Button>
               </DialogFooter>
             </DialogContent>

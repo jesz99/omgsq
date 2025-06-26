@@ -56,14 +56,14 @@ export async function GET(request: NextRequest) {
         const memberStats = await query(
           `
           SELECT 
-            (SELECT COUNT(*) FROM clients WHERE assigned_to = ?) as my_clients,
+            (SELECT COUNT(*) FROM clients WHERE assigned_to = $1) as my_clients,
             (SELECT COUNT(*) FROM invoices i JOIN clients c ON i.client_id = c.id 
-             WHERE c.assigned_to = ? AND i.status = 'draft') as active_tasks,
+             WHERE c.assigned_to = $1 AND i.status = 'draft') as active_tasks,
             (SELECT COUNT(*) FROM invoices i JOIN clients c ON i.client_id = c.id 
-             WHERE c.assigned_to = ? AND i.status = 'paid' 
+             WHERE c.assigned_to = $1 AND i.status = 'paid' 
              AND DATE_TRUNC('month', i.paid_at) = DATE_TRUNC('month', CURRENT_DATE)) as completed,
             (SELECT COUNT(*) FROM invoices i JOIN clients c ON i.client_id = c.id 
-             WHERE c.assigned_to = ? AND i.status = 'sent') as pending_review
+             WHERE c.assigned_to = $1 AND i.status = 'sent') as pending_review
         `,
           [decoded.id],
         )
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
         const leaderStats = await query(
           `
           SELECT 
-            (SELECT COUNT(*) FROM users WHERE team_leader_id = ?) as team_members,
+            (SELECT COUNT(*) FROM users WHERE team_leader_id = $1) as team_members,
             (SELECT ROUND(AVG(completion_rate), 0) FROM (
               SELECT 
                 u.id,
@@ -85,14 +85,14 @@ export async function GET(request: NextRequest) {
               FROM users u
               LEFT JOIN clients c ON c.assigned_to = u.id
               LEFT JOIN invoices i ON i.client_id = c.id
-              WHERE u.team_leader_id = ? OR u.id = ?
+              WHERE u.team_leader_id = $1 OR u.id = $1
               GROUP BY u.id
             ) sub) as team_performance,
             (SELECT COUNT(*) FROM clients c JOIN users u ON c.assigned_to = u.id 
-             WHERE u.team_leader_id = ? OR u.id = ?) as active_clients,
+             WHERE u.team_leader_id = $1 OR u.id = $1) as active_clients,
             (SELECT COUNT(*) FROM invoices i JOIN clients c ON i.client_id = c.id 
              JOIN users u ON c.assigned_to = u.id 
-             WHERE (u.team_leader_id = ? OR u.id = ?) AND i.status = 'overdue') as overdue_tasks
+             WHERE (u.team_leader_id = $1 OR u.id = $1) AND i.status = 'overdue') as overdue_tasks
         `,
           [decoded.id],
         )

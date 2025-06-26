@@ -4,14 +4,7 @@ import { verifyAuth } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
   try {
-    // Extract token from cookies
-    const token = request.cookies.get("auth-token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "No authentication token" }, { status: 401 })
-    }
-
-    const user = await verifyAuth(token)
+    const user = await verifyAuth(request)
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -34,12 +27,12 @@ export async function GET(request: NextRequest) {
     const params: any[] = []
 
     // Role-based access control
-    if (user.role === "team_member") {
+    if (user.role === "Team Member") {
       sql += " AND dc.user_id = ?"
       params.push(user.id)
-    } else if (user.role === "team_leader") {
+    } else if (user.role === "Team Leader") {
       // Team leaders can see their own and their team members' check-ins
-      sql += " AND (dc.user_id = ? OR u.role = 'team_member')"
+      sql += " AND (dc.user_id = ? OR u.role = 'Team Member')"
       params.push(user.id)
     }
     // Admin and Director can see all check-ins
@@ -71,20 +64,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Extract token from cookies
-    const token = request.cookies.get("auth-token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "No authentication token" }, { status: 401 })
-    }
-
-    const user = await verifyAuth(token)
+    const user = await verifyAuth(request)
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // Only team members and team leaders can create check-ins
-    if (!["team_member", "team_leader"].includes(user.role)) {
+    if (!["Team Member", "Team Leader"].includes(user.role)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 

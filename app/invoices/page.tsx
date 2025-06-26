@@ -31,6 +31,7 @@ interface Invoice {
   client_name: string
   amount: number
   period: string
+  invoice_date: string
   due_date: string
   status: string
   bank_account_name?: string
@@ -50,8 +51,10 @@ export default function InvoicesPage() {
   const [generatingPdf, setGeneratingPdf] = useState<string | null>(null)
   const [newInvoice, setNewInvoice] = useState({
     client_id: "",
+    invoice_number: "",
     period: "",
     amount: "",
+    invoice_date: "",
     due_date: "",
     bank_account_id: "",
     notes: "",
@@ -95,7 +98,7 @@ export default function InvoicesPage() {
   }
 
   const handleCreateInvoice = async () => {
-    if (!newInvoice.client_id || !newInvoice.amount || !newInvoice.due_date) {
+    if (!newInvoice.client_id || !newInvoice.amount || !newInvoice.due_date|| !newInvoice.invoice_date) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -117,8 +120,10 @@ export default function InvoicesPage() {
         })
         setNewInvoice({
           client_id: "",
+          invoice_number:"",
           period: "",
           amount: "",
+          invoice_date: "",
           due_date: "",
           bank_account_id: "",
           notes: "",
@@ -321,6 +326,15 @@ export default function InvoicesPage() {
                     </Select>
                   </div>
                   <div className="grid gap-2">
+                    <Label htmlFor="period">No. Invoice</Label>
+                    <Input
+                      id="invoice_number"
+                      value={newInvoice.invoice_number}
+                      onChange={(e) => setNewInvoice({ ...newInvoice, invoice_number: e.target.value })}
+                      placeholder="e.g., INV XXXX-XXX"
+                    />
+                  </div>
+                  <div className="grid gap-2">
                     <Label htmlFor="period">Period</Label>
                     <Input
                       id="period"
@@ -330,7 +344,7 @@ export default function InvoicesPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="amount">Amount ($) *</Label>
+                    <Label htmlFor="amount">Amount (Rp) *</Label>
                     <Input
                       id="amount"
                       type="number"
@@ -338,6 +352,15 @@ export default function InvoicesPage() {
                       value={newInvoice.amount}
                       onChange={(e) => setNewInvoice({ ...newInvoice, amount: e.target.value })}
                       placeholder="Enter amount"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="invoiceDate">Invoice Date *</Label>
+                    <Input
+                      id="invoiceDate"
+                      type="date"
+                      value={newInvoice.invoice_date}
+                      onChange={(e) => setNewInvoice({ ...newInvoice, invoice_date: e.target.value })}
                     />
                   </div>
                   <div className="grid gap-2">
@@ -367,7 +390,7 @@ export default function InvoicesPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-2">
+                  {/* <div className="grid gap-2">
                     <Label htmlFor="notes">Notes</Label>
                     <Textarea
                       id="notes"
@@ -376,7 +399,7 @@ export default function InvoicesPage() {
                       placeholder="Additional notes"
                       rows={2}
                     />
-                  </div>
+                  </div> */}
                 </div>
                 <DialogFooter>
                   <Button type="submit" onClick={handleCreateInvoice}>
@@ -472,6 +495,7 @@ export default function InvoicesPage() {
                     <TableHead>Invoice ID</TableHead>
                     <TableHead>Client</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>Invoice Date</TableHead>
                     <TableHead>Due Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -487,14 +511,12 @@ export default function InvoicesPage() {
                           <p className="text-sm text-muted-foreground">{invoice.period}</p>
                         </div>
                       </TableCell>
-                      <TableCell>${Number(invoice.amount).toLocaleString()}</TableCell>
-                      <TableCell>{new Date(invoice.due_date).toLocaleDateString()}</TableCell>
+                      <TableCell>Rp {Number(invoice.amount).toLocaleString()}</TableCell>
+                      <TableCell>{new Date(invoice.invoice_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</TableCell>
+                      <TableCell>{new Date(invoice.due_date).toLocaleDateString('en-GB').replace(/\//g, '-')}</TableCell>
                       <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -531,7 +553,7 @@ export default function InvoicesPage() {
                   ))}
                 </TableBody>
               </Table>
-            )} 
+            )}
           </CardContent>
         </Card>
       </div>

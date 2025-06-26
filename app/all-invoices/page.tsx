@@ -42,7 +42,8 @@ export default function AllInvoicesPage() {
       const response = await apiClient.getInvoices()
       if (response.success) {
         const formattedInvoices = response.invoices.map((invoice) => ({
-          id: invoice.invoice_number,
+          id: invoice.id,
+          invoiceNumber: invoice.invoice_number,
           client: invoice.client_name,
           assignedTo: invoice.client_assigned_to_name || "Unassigned",
           team: "Team Alpha", // Default team assignment

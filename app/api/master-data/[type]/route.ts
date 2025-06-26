@@ -73,25 +73,25 @@ export async function POST(request: NextRequest, { params }: { params: { type: s
         tableName = "master_payment_methods"
         fields = ["name"]
         values = [body.name]
-        placeholders = ["?"]
+        placeholders = ["$1"]
         break
       case "task-categories":
         tableName = "master_task_categories"
         fields = ["name", "icon", "color"]
         values = [body.name, body.icon, body.color]
-        placeholders = ["?", "?", "?"]
+        placeholders = ["$1", "$2", "$3"]
         break
       case "priorities":
         tableName = "master_priorities"
         fields = ["name", "level", "color"]
         values = [body.name, body.level, body.color]
-        placeholders = ["?", "?", "?"]
+        placeholders = ["$1", "$2", "$3"]
         break
       case "bank-accounts":
         tableName = "master_bank_accounts"
         fields = ["name", "account_number"]
         values = [body.name, body.account_number]
-        placeholders = ["?", "?"]
+        placeholders = ["$1", "$2"]
         break
       default:
         return NextResponse.json({ success: false, error: "Invalid master data type" }, { status: 400 })

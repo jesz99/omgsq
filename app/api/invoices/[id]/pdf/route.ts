@@ -25,12 +25,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         ba.name as bank_account_name,
         ba.account_number,
         ba.bank_name,
-        ba.account_holder_name,
-        u.name as created_by_name
+        ba.account_holder_name
       FROM invoices i
       JOIN clients c ON i.client_id = c.id
       LEFT JOIN bank_accounts ba ON i.bank_account_id = ba.id
-      LEFT JOIN users u ON i.created_by = u.id
       WHERE i.id = ?
     `,
       [invoiceId],
@@ -40,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ success: false, error: "Invoice not found" }, { status: 404 })
     }
 
-    const invoice = invoiceResult.rows[0];
+    const invoice = invoiceResult.rows[0]
 
     // Create PDF
     const doc = new jsPDF()

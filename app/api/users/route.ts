@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const token = request.cookies.get("auth-token")?.value
     const decoded = verifyToken(token)
 
-    if (!decoded || !["admin", "director"].includes(decoded.role)) {
+    if (!decoded || !["admin", "director", "finance"].includes(decoded.role)) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 })
     }
 

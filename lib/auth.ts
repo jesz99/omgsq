@@ -103,20 +103,6 @@ export async function getUserById(id: string): Promise<User | null> {
   }
 }
 
-// Verify auth token and return the current user (or null if invalid)
-export async function verifyAuth(token: string): Promise<User | null> {
-  if (!token) return null
-
-  // `verifyToken` already handles expiration and signature checks
-  const decoded = verifyToken(token)
-  if (!decoded || typeof decoded !== "object" || !("id" in decoded)) {
-    return null
-  }
-
-  // Look up the user in the database
-  return getUserById(String(decoded.id))
-}
-
 // Create audit log
 export async function createAuditLog(
   userId: string,
@@ -131,7 +117,7 @@ export async function createAuditLog(
   try {
     await query(
       `INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [userId, action, tableName, recordId, JSON.stringify(oldValues), JSON.stringify(newValues)],
     )
   } catch (error) {
