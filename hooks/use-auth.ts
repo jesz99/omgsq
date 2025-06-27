@@ -30,7 +30,7 @@ export function useAuth() {
       const response = await apiClient.getCurrentUser()
       console.log("Auth check response:", response)
 
-      if (response.success) {
+      if (response.success && response.user) {
         console.log("User authenticated:", response.user)
         setUser(response.user)
       } else {
@@ -51,7 +51,7 @@ export function useAuth() {
       const response = await apiClient.login(email, password)
       console.log("Login response:", response)
 
-      if (response.success) {
+      if (response.success && response.user) {
         console.log("Login successful, setting user:", response.user)
         setUser(response.user)
         return { success: true }

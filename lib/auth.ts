@@ -62,7 +62,7 @@ export async function authenticateUser(email: string, password: string): Promise
   try {
     const result = await query("SELECT * FROM users WHERE email = ? AND status = ?", [email, "active"])
 
-    if (result.rows.length === 0) {
+    if (!result.rows || result.rows.length === 0) {
       return { success: false, error: "Invalid credentials" }
     }
 
@@ -96,9 +96,42 @@ export async function getUserById(id: string): Promise<User | null> {
       [id],
     )
 
-    return result.rows.length > 0 ? result.rows[0] : null
+    if (!result.rows || result.rows.length === 0) {
+      return null
+    }
+
+    return result.rows[0]
   } catch (error) {
     console.error("Get user error:", error)
+    return null
+  }
+}
+
+// Verify auth token and return the current user (or null if invalid)
+export async function verifyAuth(token: string): Promise<User | null> {
+  try {
+    if (!token) {
+      console.log("No token provided")
+      return null
+    }
+
+    // Verify token signature and expiration
+    const decoded = verifyToken(token)
+    if (!decoded || typeof decoded !== "object" || !("id" in decoded)) {
+      console.log("Invalid token structure")
+      return null
+    }
+
+    // Look up the user in the database
+    const user = await getUserById(String(decoded.id))
+    if (!user) {
+      console.log("User not found in database")
+      return null
+    }
+
+    return user
+  } catch (error) {
+    console.error("verifyAuth error:", error)
     return null
   }
 }
@@ -116,9 +149,9 @@ export async function createAuditLog(
 ) {
   try {
     await query(
-      `INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values)
+      `INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values, ip_address, user_agent)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [userId, action, tableName, recordId, JSON.stringify(oldValues), JSON.stringify(newValues)],
+      [userId, action, tableName, recordId, JSON.stringify(oldValues), JSON.stringify(newValues), ipAddress, userAgent],
     )
   } catch (error) {
     console.error("Audit log error:", error)
