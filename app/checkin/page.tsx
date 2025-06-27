@@ -60,10 +60,10 @@ export default function CheckInPage() {
   })
 
   useEffect(() => {
-    if (user && ["Team Member", "Team Leader"].includes(user.role)) {
-      fetchTodayCheckin()
-      fetchRecentCheckins()
-    }
+    // if (user && ["Team Member", "Team Leader"].includes(user.role)) {
+    //   fetchTodayCheckin()
+    //   fetchRecentCheckins()
+    // }
   }, [user])
 
   const fetchTodayCheckin = async () => {
