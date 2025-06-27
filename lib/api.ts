@@ -225,23 +225,6 @@ class ApiClient {
     return this.request(`/task-reports${queryString}`)
   }
 
-  // Check-ins methods
-  async getCheckins(params?: any) {
-    const queryString = params ? `?${new URLSearchParams(params).toString()}` : ""
-    return this.request(`/checkins${queryString}`)
-  }
-
-  async createCheckin(checkinData: any) {
-    return this.request("/checkins", {
-      method: "POST",
-      body: JSON.stringify(checkinData),
-    })
-  }
-
-  async getCheckinReports(params?: any) {
-    const queryString = params ? `?${new URLSearchParams(params).toString()}` : ""
-    return this.request(`/checkins/reports${queryString}`)
-  }
 }
 
 export const apiClient = new ApiClient()

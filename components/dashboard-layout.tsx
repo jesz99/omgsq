@@ -80,7 +80,6 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
           { name: "Tasks", href: "/tasks", icon: CheckSquare },
           { name: "Task Management", href: "/task-management", icon: Target },
           { name: "Task Reports", href: "/task-reports", icon: BarChart3 },
-          { name: "Check-in Reports", href: "/checkin-reports", icon: BarChart3 },
           { name: "Master Data", href: "/master-data", icon: Database },
         ]
 
@@ -97,7 +96,6 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
           { name: "Team Management", href: "/team", icon: Users },
           { name: "Performance", href: "/performance", icon: Target },
           { name: "Task Reports", href: "/task-reports", icon: BarChart3 },
-          { name: "Check-in Reports", href: "/checkin-reports", icon: BarChart3 },
         ]
 
       case "finance":
@@ -118,14 +116,12 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
           { name: "Task Management", href: "/task-management", icon: Target },
           { name: "Team Management", href: "/team", icon: Users },
           { name: "Performance", href: "/performance", icon: Target },
-          { name: "Daily Check-in", href: "/checkin", icon: Clock },
         ]
 
       case "team_member":
         return [
           ...baseItems,
           { name: "Task Management", href: "/task-management", icon: Target },
-          { name: "Daily Check-in", href: "/checkin", icon: Clock },
         ]
 
       default:
